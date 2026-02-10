@@ -1,0 +1,8 @@
+/* Global app layout tweaks specific to the root container.
+   We keep this minimal so that individual pages (like the Login page)
+   can control their own layout and centering. */
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
