@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Tooltip, useTheme } from '@mui/material';
-import { getMyActivity } from '../services/api';
+import { getMyActivity, getActivityByStudent } from '../services/api';
 
 const CELL_SIZE = 12;
 const GAP = 3;
@@ -52,7 +52,7 @@ function getLevel(count, max) {
   return 1;
 }
 
-export default function ActivityHeatmap() {
+export default function ActivityHeatmap({ studentId }) {
   const theme = useTheme();
   const [data, setData] = useState({ days: [], totalActivity: 0, maxPerDay: 0 });
   const [loading, setLoading] = useState(true);
@@ -62,11 +62,12 @@ export default function ActivityHeatmap() {
   const max = data.maxPerDay || 1;
 
   useEffect(() => {
-    getMyActivity()
+    const fetcher = studentId ? () => getActivityByStudent(studentId) : getMyActivity;
+    fetcher()
       .then((res) => setData(res.data.data))
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, []);
+  }, [studentId]);
 
   if (loading) return <Box sx={{ py: 2 }}><Typography color="text.secondary">Loading activity...</Typography></Box>;
 

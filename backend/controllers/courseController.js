@@ -6,12 +6,13 @@ const { success, error } = require('../utils/response');
  */
 const createCourse = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    if (req.user.role !== 'admin') return error(res, 'Only administrators can create courses.', 403);
+    const { title, description, image_url } = req.body;
     const instructor_id = req.user.role === 'admin' ? (req.body.instructor_id || req.user.id) : req.user.id;
     if (!title) return error(res, 'Title is required.', 400);
     const [result] = await pool.execute(
-      'INSERT INTO courses (title, description, instructor_id) VALUES (?, ?, ?)',
-      [title, description || '', instructor_id]
+      'INSERT INTO courses (title, description, image_url, instructor_id) VALUES (?, ?, ?, ?)',
+      [title, description || '', image_url || null, instructor_id]
     );
     const [rows] = await pool.execute(
       'SELECT c.*, u.name as instructor_name FROM courses c LEFT JOIN users u ON c.instructor_id = u.id WHERE c.id = ?',
@@ -30,7 +31,7 @@ const createCourse = async (req, res) => {
 const getCourses = async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT c.id, c.title, c.description, c.instructor_id, c.created_at, u.name as instructor_name
+      `SELECT c.id, c.title, c.description, c.image_url, c.instructor_id, c.created_at, u.name as instructor_name
        FROM courses c LEFT JOIN users u ON c.instructor_id = u.id ORDER BY c.created_at DESC`
     );
     return success(res, 'OK', { courses: rows });
@@ -72,11 +73,12 @@ const updateCourse = async (req, res) => {
     if (req.user.role === 'instructor' && existing[0].instructor_id !== req.user.id) {
       return error(res, 'You can only edit your own course.', 403);
     }
-    const { title, description } = req.body;
+    const { title, description, image_url } = req.body;
     const updates = [];
     const values = [];
     if (title !== undefined) { updates.push('title = ?'); values.push(title); }
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (image_url !== undefined) { updates.push('image_url = ?'); values.push(image_url); }
     if (updates.length === 0) return error(res, 'No valid fields to update.', 400);
     values.push(id);
     await pool.execute(`UPDATE courses SET ${updates.join(', ')} WHERE id = ?`, values);

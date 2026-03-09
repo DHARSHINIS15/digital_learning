@@ -5,9 +5,12 @@ import Layout from '../components/Layout';
 
 import Login from '../pages/Login';
 import Register from '../pages/Register';
+import ForgotPassword from '../pages/ForgotPassword';
+import ResetPassword from '../pages/ResetPassword';
 
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import ManageUsers from '../pages/admin/ManageUsers';
+import AdminStudentProgress from '../pages/admin/AdminStudentProgress';
 import ManageCourses from '../pages/admin/ManageCourses';
 
 import InstructorDashboard from '../pages/instructor/InstructorDashboard';
@@ -25,7 +28,7 @@ function RoleRedirect() {
   const { user } = useAuth();
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   if (user?.role === 'instructor') return <Navigate to="/instructor" replace />;
-  return <Navigate to="/student" replace />;
+  return <Navigate to="/student/courses" replace />;
 }
 
 export default function AppRoutes() {
@@ -34,6 +37,8 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route
           path="/"
           element={
@@ -56,6 +61,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Layout><ManageUsers /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users/:id/progress"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Layout><AdminStudentProgress /></Layout>
             </ProtectedRoute>
           }
         />

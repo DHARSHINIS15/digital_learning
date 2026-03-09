@@ -44,9 +44,6 @@ export default function InstructorCourses() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5">My Courses</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/instructor/courses/new')}>
-          Add Course
-        </Button>
       </Box>
       <TableContainer component={Paper}>
         <Table>

@@ -15,7 +15,9 @@ import { login } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const schema = Yup.object({
-  email: Yup.string().email('Invalid email').required('Required'),
+  email: Yup.string()
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format')
+    .required('Required'),
   password: Yup.string().required('Required'),
 });
 
@@ -90,6 +92,17 @@ export default function Login() {
                   error={touched.password && !!errors.password}
                   helperText={touched.password && errors.password}
                 />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                  <Typography
+                    component={RouterLink}
+                    to="/forgot-password"
+                    color="primary"
+                    variant="body2"
+                    sx={{ textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    Forgot Password?
+                  </Typography>
+                </Box>
                 <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 2 }}>
                   Login
                 </Button>

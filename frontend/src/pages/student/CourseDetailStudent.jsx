@@ -27,11 +27,20 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Avatar,
+  CardMedia,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PlayCircleIcon from '@mui/icons-material/PlayCircleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuizIcon from '@mui/icons-material/Quiz';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import DescriptionIcon from '@mui/icons-material/Description';
+import LinkIcon from '@mui/icons-material/Link';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import {
   getCourseById,
   getLessons,
@@ -57,6 +66,7 @@ export default function CourseDetailStudent() {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [contentViews, setContentViews] = useState({}); // { lessonId-contentId: 'video' | 'text' }
 
   useEffect(() => {
     Promise.all([getCourseById(id), getLessons(id), myProgress(), getQuizzesByCourse(id), getMyQuizAttempts()])
@@ -83,7 +93,7 @@ export default function CourseDetailStudent() {
         ...prev,
         [lessonId]: { ...prev[lessonId], completed, time_spent_minutes: (prev[lessonId]?.time_spent_minutes || 0) },
       }));
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const openQuiz = async (quiz) => {
@@ -137,38 +147,111 @@ export default function CourseDetailStudent() {
       </Paper>
 
       <Typography variant="h6" gutterBottom>Lessons & Resources</Typography>
-      <Paper>
-        <List>
-          {lessons.map((l) => {
-            const prog = progress[l.id];
-            const completed = prog?.completed;
-            return (
-              <ListItem key={l.id} disablePadding divider>
-                <ListItemIcon>
-                  {completed ? <CheckCircleIcon color="success" /> : <PlayCircleIcon />}
-                </ListItemIcon>
-                <ListItemText
-                  primary={l.title}
-                  secondary={`${l.content_type} ${l.duration_minutes ? `• ${l.duration_minutes} min` : ''}`}
-                />
-                {l.content_url && (
-                  <Button size="small" href={l.content_url} target="_blank" rel="noopener noreferrer">
-                    Open
-                  </Button>
-                )}
-                {!completed && (
-                  <Chip
-                    size="small"
-                    label="Mark complete"
-                    onClick={() => markComplete(l.id, true)}
-                    sx={{ ml: 1 }}
+      <Box>
+        {lessons.map((l) => {
+          const prog = progress[l.id];
+          const completed = prog?.completed;
+          return (
+            <Accordion key={l.id} sx={{ mb: 1, borderRadius: '8px !important', '&:before': { display: 'none' } }} elevation={1}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" width="100%">
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    {l.image_url ? (
+                      <Avatar src={l.image_url} variant="rounded" sx={{ width: 32, height: 32 }} />
+                    ) : (
+                      completed ? <CheckCircleIcon color="success" /> : <PlayCircleIcon color="action" />
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={l.title}
+                    secondary={`${l.contents?.length || 0} topics ${l.duration_minutes ? `• ${l.duration_minutes} min` : ''}`}
                   />
-                )}
-              </ListItem>
-            );
-          })}
-        </List>
-      </Paper>
+                  {!completed && (
+                    <Chip
+                      size="small"
+                      label="Mark complete"
+                      onClick={(e) => { e.stopPropagation(); markComplete(l.id, true); }}
+                      sx={{ ml: 'auto', mr: 2 }}
+                    />
+                  )}
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <List size="small" disablePadding>
+                  {l.contents?.map((content, cIdx) => {
+                    const viewKey = `${l.id}-${content.id || cIdx}`;
+                    const currentView = contentViews[viewKey] || 'video';
+
+                    return (
+                      <Paper key={content.id || cIdx} variant="outlined" sx={{ mb: 2, p: 0, overflow: 'hidden', borderRadius: 2 }}>
+                        <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" fontWeight={700}>{content.title}</Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {content.video_url && (
+                              <Button
+                                size="extra-small"
+                                variant={currentView === 'video' ? "contained" : "outlined"}
+                                onClick={() => setContentViews({ ...contentViews, [viewKey]: 'video' })}
+                                startIcon={<PlayCircleIcon sx={{ fontSize: '1rem !important' }} />}
+                                sx={{ textTransform: 'none', borderRadius: 1, px: 1, py: 0.25, fontSize: '0.75rem' }}
+                              >
+                                Video
+                              </Button>
+                            )}
+                            {content.text_content && (
+                              <Button
+                                size="extra-small"
+                                variant={currentView === 'text' ? "contained" : "outlined"}
+                                onClick={() => setContentViews({ ...contentViews, [viewKey]: 'text' })}
+                                startIcon={<DescriptionIcon sx={{ fontSize: '1rem !important' }} />}
+                                sx={{ textTransform: 'none', borderRadius: 1, px: 1, py: 0.25, fontSize: '0.75rem' }}
+                              >
+                                Notes
+                              </Button>
+                            )}
+                          </Box>
+                        </Box>
+                        <Box sx={{ p: 2 }}>
+                          {currentView === 'video' && content.video_url ? (
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                href={content.video_url}
+                                target="_blank"
+                                startIcon={<PlayCircleIcon />}
+                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                              >
+                                Watch Video
+                              </Button>
+                              <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
+                                Opens in a new tab
+                              </Typography>
+                            </Box>
+                          ) : currentView === 'text' && content.text_content ? (
+                            <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                              {content.text_content}
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary" textAlign="center" display="block">
+                              Select a format to study
+                            </Typography>
+                          )}
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                  {(!l.contents || l.contents.length === 0) && (
+                    <Typography variant="caption" color="text.secondary" sx={{ py: 1, display: 'block', textAlign: 'center' }}>
+                      No content items in this lesson.
+                    </Typography>
+                  )}
+                </List>
+              </AccordionDetails>
+            </Accordion>
+          );
+        })}
+      </Box>
 
       {quizzes.length > 0 && (
         <>
@@ -177,7 +260,11 @@ export default function CourseDetailStudent() {
             {quizzes.map((q) => (
               <Box key={q.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <QuizIcon color="action" />
+                  {q.image_url ? (
+                    <Avatar src={q.image_url} variant="rounded" sx={{ width: 40, height: 40 }} />
+                  ) : (
+                    <QuizIcon color="action" />
+                  )}
                   <Typography>{q.title}</Typography>
                   <Chip size="small" label={`Pass: ${q.passing_score_pct ?? 60}%`} variant="outlined" />
                 </Box>
@@ -226,8 +313,18 @@ export default function CourseDetailStudent() {
             </Box>
           ) : (
             quizModal?.questions?.map((q, idx) => (
-              <FormControl key={q.id} component="fieldset" sx={{ display: 'block', mb: 2 }}>
-                <Typography variant="body1" fontWeight={500} sx={{ mb: 1 }}>{idx + 1}. {q.question_text}</Typography>
+              <FormControl key={q.id} component="fieldset" sx={{ display: 'block', mb: 3 }}>
+                <Typography variant="body1" fontWeight={600} sx={{ mb: 1 }}>{idx + 1}. {q.question_text}</Typography>
+                {q.image_url && (
+                  <Box sx={{ mb: 2, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                    <CardMedia
+                      component="img"
+                      image={q.image_url}
+                      alt={`Question ${idx + 1}`}
+                      sx={{ maxHeight: 300, width: 'auto', margin: '0 auto' }}
+                    />
+                  </Box>
+                )}
                 <RadioGroup value={quizAnswers[q.id] || ''} onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}>
                   {['a', 'b', 'c', 'd'].map((opt) => q[`option_${opt}`] && <FormControlLabel key={opt} value={opt} control={<Radio />} label={q[`option_${opt}`]} />)}
                 </RadioGroup>

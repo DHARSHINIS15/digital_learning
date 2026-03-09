@@ -10,8 +10,8 @@ router.use(authenticate);
 router.get('/', courseController.getCourses);
 router.get('/:id', courseController.getCourseById);
 
-// Create/update/delete: Admin or Instructor only
-router.post('/', roleCheck('admin', 'instructor'), courseController.createCourse);
+// Create: Admin only. Update/delete: Admin or Instructor (own)
+router.post('/', roleCheck('admin'), courseController.createCourse);
 router.put('/:id', roleCheck('admin', 'instructor'), courseController.updateCourse);
 router.delete('/:id', roleCheck('admin', 'instructor'), courseController.deleteCourse);
 

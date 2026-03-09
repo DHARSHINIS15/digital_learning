@@ -21,6 +21,7 @@ CREATE TABLE courses (
   id INT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
   description TEXT,
+  image_url TEXT,
   instructor_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -36,6 +37,7 @@ CREATE TABLE lessons (
   content_url TEXT,
   duration_minutes INT DEFAULT 0,
   sort_order INT DEFAULT 0,
+  image_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
   INDEX idx_course (course_id)
@@ -75,6 +77,7 @@ CREATE TABLE quizzes (
   id INT PRIMARY KEY AUTO_INCREMENT,
   course_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
+  image_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
   INDEX idx_course (course_id)
@@ -121,4 +124,4 @@ CREATE TABLE reports (
 -- Default admin user (password: Admin@123) - bcrypt hash
 -- Run seed script for actual admin; this is fallback insert
 -- INSERT INTO users (name, email, password_hash, role) VALUES
--- ('System Admin', 'admin@dleo.com', '$2b$10$YourHashedPasswordHere', 'admin');
+-- ('System Admin', 'dharshinis415@gmail.com', '$2b$10$YourHashedPasswordHere', 'admin');

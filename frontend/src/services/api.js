@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -84,8 +84,19 @@ export const getMyQuizAttempts = () => api.get('/quizzes/my-attempts');
 export const getQuizRecommendations = () => api.get('/quizzes/recommendations');
 export const getQuizQuestions = (quizId) => api.get(`/quizzes/${quizId}/questions`);
 export const addQuizQuestion = (quizId, data) => api.post(`/quizzes/${quizId}/questions`, data);
+export const addBatchQuizQuestions = (quizId, questions) => api.post(`/quizzes/${quizId}/questions/batch`, { questions });
+export const deleteQuizQuestion = (id) => api.delete(`/quizzes/questions/${id}`);
+
+export const uploadFile = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
 
 // Activity (for heatmap)
 export const getMyActivity = () => api.get('/activity/me');
+export const getActivityByStudent = (id) => api.get(`/activity/student/${id}`);
 
 export default api;

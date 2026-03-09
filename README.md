@@ -33,7 +33,7 @@ cd backend
 npm run seed
 ```
 
-Default admin: **admin@dleo.com** / **Admin@123**
+Default admin: **dharshinis415@gmail.com** / **Admin@123**
 
 ### 2. Backend
 

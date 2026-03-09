@@ -1,7 +1,7 @@
 /**
  * Seed default admin user.
  * Run: node scripts/seedAdmin.js
- * Default: admin@dleo.com / Admin@123
+ * Default: dharshinis415@gmail.com / Admin@123
  */
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env'), override: true });
 const bcrypt = require('bcrypt');
@@ -9,7 +9,7 @@ const mysql = require('mysql2/promise');
 
 const DEFAULT_ADMIN = {
   name: 'System Admin',
-  email: 'admin@dleo.com',
+  email: 'dharshinis415@gmail.com',
   password: 'Admin@123',
   role: 'admin',
 };
@@ -38,7 +38,7 @@ async function seed() {
       'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
       [DEFAULT_ADMIN.name, DEFAULT_ADMIN.email, password_hash, DEFAULT_ADMIN.role]
     );
-    console.log('Admin user created: admin@dleo.com / Admin@123');
+    console.log('Admin user created: dharshinis415@gmail.com / Admin@123');
   } catch (err) {
     console.error('Seed error:', err.message);
     process.exit(1);

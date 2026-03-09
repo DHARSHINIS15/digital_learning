@@ -49,6 +49,7 @@ export default function ManageCourses() {
       await createCourse({
         title: values.title,
         description: values.description || '',
+        image_url: values.image_url || '',
         instructor_id: values.instructor_id || undefined,
       });
       setOpenAdd(false);
@@ -95,7 +96,7 @@ export default function ManageCourses() {
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add Course</DialogTitle>
         <Formik
-          initialValues={{ title: '', description: '', instructor_id: instructors[0]?.id || '' }}
+          initialValues={{ title: '', description: '', image_url: '', instructor_id: instructors[0]?.id || '' }}
           onSubmit={async (values, { setFieldError }) => {
             const err = await handleAddCourse(values);
             if (err?.submitError) setFieldError('title', err.submitError);
@@ -121,6 +122,13 @@ export default function ManageCourses() {
                   label="Description"
                   multiline
                   rows={2}
+                  margin="dense"
+                />
+                <Field
+                  as={TextField}
+                  fullWidth
+                  name="image_url"
+                  label="Course Image URL"
                   margin="dense"
                 />
                 <Field as={TextField} select fullWidth name="instructor_id" label="Instructor" margin="dense">

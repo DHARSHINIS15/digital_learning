@@ -12,20 +12,20 @@ import { useAuth } from '../context/AuthContext';
 export const drawerWidth = 240;
 
 const adminLinks = [
-  { to: '/admin', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/admin', label: 'Dashboard', icon: <DashboardIcon />, end: true },
   { to: '/admin/users', label: 'Manage Users', icon: <PeopleIcon /> },
   { to: '/admin/courses', label: 'Manage Courses', icon: <MenuBookIcon /> },
 ];
 
 const instructorLinks = [
-  { to: '/instructor', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/instructor', label: 'Dashboard', icon: <DashboardIcon />, end: true },
   { to: '/instructor/courses', label: 'My Courses', icon: <MenuBookIcon /> },
   { to: '/instructor/reports', label: 'Reports', icon: <AssessmentIcon /> },
 ];
 
 const studentLinks = [
-  { to: '/student', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/student/courses', label: 'Courses', icon: <SchoolIcon /> },
+  { to: '/student', label: 'Dashboard', icon: <DashboardIcon />, end: true },
   { to: '/student/progress', label: 'Progress', icon: <TrendingUpIcon /> },
   { to: '/student/notifications', label: 'Notifications', icon: <NotificationsIcon /> },
 ];
@@ -43,11 +43,12 @@ export default function Sidebar({ open, onClose }) {
   const drawerContent = (
     <Box sx={{ pt: 2 }}>
       <List>
-        {links.map(({ to, label, icon }) => (
+        {links.map(({ to, label, icon, end }) => (
           <ListItemButton
             key={to}
             component={NavLink}
             to={to}
+            end={end}
             onClick={onClose}
             sx={({ palette }) => ({
               '&.active': { backgroundColor: palette.primary.main, color: palette.primary.contrastText },

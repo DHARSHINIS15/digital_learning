@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -94,23 +95,23 @@ export default function ManageUsers() {
         </Button>
       </Box>
       {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
-      <TableContainer component={Paper}>
+
+      <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Instructors</Typography>
+      <TableContainer component={Paper} sx={{ mb: 4 }}>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
               <TableCell>Created</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((u) => (
+            {users.filter(u => u.role === 'instructor').map((u) => (
               <TableRow key={u.id}>
                 <TableCell>{u.name}</TableCell>
                 <TableCell>{u.email}</TableCell>
-                <TableCell>{ROLES[u.role] || u.role}</TableCell>
                 <TableCell>{new Date(u.created_at).toLocaleDateString()}</TableCell>
                 <TableCell align="right">
                   <IconButton size="small" onClick={() => setEditing(u)}><EditIcon /></IconButton>
@@ -118,6 +119,47 @@ export default function ManageUsers() {
                 </TableCell>
               </TableRow>
             ))}
+            {users.filter(u => u.role === 'instructor').length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} align="center">No instructors found.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Typography variant="h6" gutterBottom>Students</Typography>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Created</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {users.filter(u => u.role === 'student').map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>
+                  <Link to={`/admin/users/${u.id}/progress`} style={{ textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}>
+                    {u.name}
+                  </Link>
+                </TableCell>
+                <TableCell>{u.email}</TableCell>
+                <TableCell>{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={() => setEditing(u)}><EditIcon /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => handleDelete(u.id)}><DeleteIcon /></IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {users.filter(u => u.role === 'student').length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} align="center">No students found.</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>

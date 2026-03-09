@@ -45,16 +45,16 @@ export default function StudentDashboard() {
       .finally(() => setLoading(false));
   }, [user?.id]);
 
-  // Default: send student to first enrolled course (course detail with progress)
-  useEffect(() => {
-    if (!data?.byCourse?.length) return;
-    const first = data.byCourse[0];
-    if (first?.courseId) navigate(`/student/courses/${first.courseId}`, { replace: true });
-  }, [data, navigate]);
+  // Auto-redirect removed to allow viewing the dashboard
+  // useEffect(() => {
+  //   if (!data?.byCourse?.length) return;
+  //   const first = data.byCourse[0];
+  //   if (first?.courseId) navigate(`/student/courses/${first.courseId}`, { replace: true });
+  // }, [data, navigate]);
 
   if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
-  if (data?.byCourse?.length > 0) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+  // if (data?.byCourse?.length > 0) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
   const overall = data?.overall || {};
   const byCourse = data?.byCourse || [];

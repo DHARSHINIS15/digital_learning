@@ -16,7 +16,9 @@ import { useAuth } from '../context/AuthContext';
 
 const schema = Yup.object({
   name: Yup.string().required('Required'),
-  email: Yup.string().email('Invalid email').required('Required'),
+  email: Yup.string()
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format')
+    .required('Required'),
   password: Yup.string().min(6, 'At least 6 characters').required('Required'),
 });
 
