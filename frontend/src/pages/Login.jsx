@@ -35,7 +35,7 @@ export default function Login() {
       const res = await login(values.email, values.password);
       const { token, user } = res.data.data;
       loginUser(user, token);
-      const rolePath = user.role === 'admin' ? '/admin' : user.role === 'instructor' ? '/instructor' : '/student';
+      const rolePath = user.role === 'admin' ? '/admin' : user.role === 'instructor' ? '/instructor' : '/student/courses';
       navigate(rolePath, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');

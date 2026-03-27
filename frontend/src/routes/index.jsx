@@ -23,6 +23,8 @@ import StudentCourses from '../pages/student/StudentCourses';
 import CourseDetailStudent from '../pages/student/CourseDetailStudent';
 import Progress from '../pages/student/Progress';
 import Notifications from '../pages/student/Notifications';
+import QuizPage from '../pages/student/QuizPage';
+import QuizResultPage from '../pages/student/QuizResultPage';
 
 function RoleRedirect() {
   const { user } = useAuth();
@@ -151,6 +153,22 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <Layout><Notifications /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/quiz/:id"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <QuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/quiz/result"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Layout><QuizResultPage /></Layout>
             </ProtectedRoute>
           }
         />

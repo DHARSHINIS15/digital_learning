@@ -13,14 +13,6 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
   Table,
   TableBody,
   TableCell,
@@ -28,7 +20,6 @@ import {
   TableHead,
   TableRow,
   Avatar,
-  CardMedia,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -39,15 +30,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuizIcon from '@mui/icons-material/Quiz';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DescriptionIcon from '@mui/icons-material/Description';
-import LinkIcon from '@mui/icons-material/Link';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import {
   getCourseById,
   getLessons,
   myProgress,
   updateProgress,
   getQuizzesByCourse,
-  getQuizWithQuestions,
   submitQuizAttempt,
   getMyQuizAttempts,
 } from '../../services/api';
@@ -62,10 +50,6 @@ export default function CourseDetailStudent() {
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [quizModal, setQuizModal] = useState(null);
-  const [quizAnswers, setQuizAnswers] = useState({});
-  const [quizResult, setQuizResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
   const [contentViews, setContentViews] = useState({}); // { lessonId-contentId: 'video' | 'text' }
 
   useEffect(() => {
@@ -96,30 +80,8 @@ export default function CourseDetailStudent() {
     } catch (_) { }
   };
 
-  const openQuiz = async (quiz) => {
-    setQuizResult(null);
-    setQuizAnswers({});
-    try {
-      const res = await getQuizWithQuestions(quiz.id);
-      setQuizModal({ quiz: res.data.data.quiz, questions: res.data.data.questions || [] });
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to load quiz');
-    }
-  };
-
-  const submitQuiz = async () => {
-    if (!quizModal?.quiz) return;
-    setSubmitting(true);
-    try {
-      const res = await submitQuizAttempt(quizModal.quiz.id, quizAnswers);
-      setQuizResult(res.data.data);
-      const attemptsRes = await getMyQuizAttempts();
-      setAttempts((attemptsRes.data.data.attempts || []).filter((a) => Number(a.course_id) === Number(id)));
-    } catch (e) {
-      setError(e.response?.data?.message || 'Submit failed');
-    } finally {
-      setSubmitting(false);
-    }
+  const startQuiz = (quizId) => {
+    navigate(`/student/quiz/${quizId}`);
   };
 
   const completedLessons = lessons.filter((l) => progress[l.id]?.completed).length;
@@ -268,7 +230,7 @@ export default function CourseDetailStudent() {
                   <Typography>{q.title}</Typography>
                   <Chip size="small" label={`Pass: ${q.passing_score_pct ?? 60}%`} variant="outlined" />
                 </Box>
-                <Button size="small" variant="contained" onClick={() => openQuiz(q)}>Take Quiz</Button>
+                <Button size="small" variant="contained" onClick={() => startQuiz(q.id)}>Take Quiz</Button>
               </Box>
             ))}
           </Paper>
@@ -279,6 +241,7 @@ export default function CourseDetailStudent() {
                 <TableRow>
                   <TableCell>Quiz</TableCell>
                   <TableCell>Score</TableCell>
+                  <TableCell>Improvement Suggestion</TableCell>
                   <TableCell>Date</TableCell>
                 </TableRow>
               </TableHead>
@@ -289,56 +252,24 @@ export default function CourseDetailStudent() {
                     <TableCell>
                       <Chip size="small" color={a.score_pct >= (a.passing_score_pct ?? 60) ? 'success' : 'default'} label={`${a.score_pct}%`} />
                     </TableCell>
+                    <TableCell>
+                      {a.score_pct >= 80 ? (
+                        <Typography variant="body2" color="success.main">Good performance</Typography>
+                      ) : a.focus_topics ? (
+                        <Typography variant="body2" color="warning.main">Focus on: {a.focus_topics}</Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">General Revision Recommended</Typography>
+                      )}
+                    </TableCell>
                     <TableCell>{new Date(a.submitted_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
-                {attempts.length === 0 && <TableRow><TableCell colSpan={3} align="center" color="text.secondary">No attempts yet</TableCell></TableRow>}
+                {attempts.length === 0 && <TableRow><TableCell colSpan={4} align="center" color="text.secondary">No attempts yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </TableContainer>
         </>
       )}
-
-      <Dialog open={!!quizModal} onClose={() => !submitting && setQuizModal(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>{quizModal?.quiz?.title}</DialogTitle>
-        <DialogContent>
-          {quizResult ? (
-            <Box sx={{ py: 2, textAlign: 'center' }}>
-              <Typography variant="h5" color={quizResult.passed ? 'success.main' : 'text.secondary'}>
-                {quizResult.passed ? 'Passed' : 'Not passed'}
-              </Typography>
-              <Typography variant="h4" sx={{ mt: 1 }}>{quizResult.score_pct}%</Typography>
-              <Typography variant="body2">({quizResult.correct} / {quizResult.total} correct)</Typography>
-              <Button variant="contained" sx={{ mt: 2 }} onClick={() => setQuizModal(null)}>Close</Button>
-            </Box>
-          ) : (
-            quizModal?.questions?.map((q, idx) => (
-              <FormControl key={q.id} component="fieldset" sx={{ display: 'block', mb: 3 }}>
-                <Typography variant="body1" fontWeight={600} sx={{ mb: 1 }}>{idx + 1}. {q.question_text}</Typography>
-                {q.image_url && (
-                  <Box sx={{ mb: 2, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                    <CardMedia
-                      component="img"
-                      image={q.image_url}
-                      alt={`Question ${idx + 1}`}
-                      sx={{ maxHeight: 300, width: 'auto', margin: '0 auto' }}
-                    />
-                  </Box>
-                )}
-                <RadioGroup value={quizAnswers[q.id] || ''} onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}>
-                  {['a', 'b', 'c', 'd'].map((opt) => q[`option_${opt}`] && <FormControlLabel key={opt} value={opt} control={<Radio />} label={q[`option_${opt}`]} />)}
-                </RadioGroup>
-              </FormControl>
-            ))
-          )}
-        </DialogContent>
-        {!quizResult && quizModal?.questions?.length > 0 && (
-          <DialogActions>
-            <Button onClick={() => setQuizModal(null)}>Cancel</Button>
-            <Button variant="contained" onClick={submitQuiz} disabled={submitting}>{submitting ? 'Submitting...' : 'Submit'}</Button>
-          </DialogActions>
-        )}
-      </Dialog>
     </Box>
   );
 }

@@ -87,16 +87,32 @@ const submitAttempt = async (req, res) => {
     if (enr.length === 0) return error(res, 'You must be enrolled in this course to take the quiz.', 403);
 
     let correct = 0;
+    const answerRecords = [];
     for (const q of questions) {
       const chosen = (answers[q.id] || '').toLowerCase().trim();
-      if (chosen === (q.correct_option || '').toLowerCase()) correct++;
+      const isCorrect = chosen === (q.correct_option || '').toLowerCase();
+      if (isCorrect) correct++;
+      answerRecords.push({
+        question_id: q.id,
+        chosen_option: chosen || null,
+        is_correct: isCorrect ? 1 : 0
+      });
     }
     const score_pct = Math.round((correct / questions.length) * 100);
 
-    await pool.execute(
+    const [result] = await pool.execute(
       'INSERT INTO quiz_attempts (student_id, quiz_id, score_pct) VALUES (?, ?, ?)',
       [req.user.id, quizId, score_pct]
     );
+    const attemptId = result.insertId;
+
+    // Save individual answers
+    for (const record of answerRecords) {
+      await pool.execute(
+        'INSERT INTO quiz_attempt_answers (attempt_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?)',
+        [attemptId, record.question_id, record.chosen_option, record.is_correct]
+      );
+    }
 
     return success(res, 'Quiz submitted', {
       score_pct,
@@ -117,7 +133,13 @@ const getMyAttempts = async (req, res) => {
   try {
     if (req.user.role !== 'student') return error(res, 'Only students can view own attempts.', 403);
     const [rows] = await pool.execute(
-      `SELECT qa.*, q.title as quiz_title, q.course_id, q.passing_score_pct, c.title as course_title
+      `SELECT qa.*, q.title as quiz_title, q.course_id, q.passing_score_pct, c.title as course_title,
+              (
+                SELECT GROUP_CONCAT(DISTINCT qq.topic SEPARATOR ', ')
+                FROM quiz_attempt_answers qaa
+                JOIN quiz_questions qq ON qaa.question_id = qq.id
+                WHERE qaa.attempt_id = qa.id AND qaa.is_correct = 0 AND qq.topic IS NOT NULL
+              ) as focus_topics
        FROM quiz_attempts qa
        JOIN quizzes q ON qa.quiz_id = q.id
        JOIN courses c ON q.course_id = c.id
@@ -162,7 +184,7 @@ const getRecommendations = async (req, res) => {
 const addQuestion = async (req, res) => {
   try {
     const quizId = req.params.id;
-    const { question_text, option_a, option_b, option_c, option_d, correct_option, image_url } = req.body;
+    const { question_text, option_a, option_b, option_c, option_d, correct_option, image_url, topic } = req.body;
     if (!question_text || !correct_option) return error(res, 'question_text and correct_option required.', 400);
     const [quizRows] = await pool.execute('SELECT course_id FROM quizzes WHERE id = ?', [quizId]);
     if (quizRows.length === 0) return error(res, 'Quiz not found.', 404);
@@ -170,9 +192,9 @@ const addQuestion = async (req, res) => {
     if (!allowed) return error(res, 'Forbidden.', 403);
     const [maxOrder] = await pool.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 as n FROM quiz_questions WHERE quiz_id = ?', [quizId]);
     const [result] = await pool.execute(
-      `INSERT INTO quiz_questions (quiz_id, question_text, option_a, option_b, option_c, option_d, correct_option, sort_order, image_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [quizId, question_text, option_a || null, option_b || null, option_c || null, option_d || null, correct_option, maxOrder[0].n, image_url || null]
+      `INSERT INTO quiz_questions (quiz_id, topic, question_text, option_a, option_b, option_c, option_d, correct_option, sort_order, image_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [quizId, topic || null, question_text, option_a || null, option_b || null, option_c || null, option_d || null, correct_option, maxOrder[0].n, image_url || null]
     );
     const [rows] = await pool.execute('SELECT * FROM quiz_questions WHERE id = ?', [result.insertId]);
     return success(res, 'Question added', { question: rows[0] }, 201);
@@ -228,9 +250,9 @@ const addBatchQuestions = async (req, res) => {
       }
       currentOrder++;
       await conn.execute(
-        `INSERT INTO quiz_questions (quiz_id, question_text, option_a, option_b, option_c, option_d, correct_option, sort_order, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [quizId, q.question_text, q.option_a || null, q.option_b || null, q.option_c || null, q.option_d || null, q.correct_option, currentOrder, q.image_url || null]
+        `INSERT INTO quiz_questions (quiz_id, topic, question_text, option_a, option_b, option_c, option_d, correct_option, sort_order, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [quizId, q.topic || null, q.question_text, q.option_a || null, q.option_b || null, q.option_c || null, q.option_d || null, q.correct_option, currentOrder, q.image_url || null]
       );
     }
 

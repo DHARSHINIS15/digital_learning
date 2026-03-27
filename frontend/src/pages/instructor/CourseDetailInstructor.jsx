@@ -295,107 +295,218 @@ export default function CourseDetailInstructor() {
         </Formik>
       </Dialog>
 
+      {/* ── Add Questions Dialog (Topic-first, multi-question per topic) ── */}
       <Dialog open={openQuestion && !!selectedQuiz} onClose={() => { setOpenQuestion(false); setSelectedQuiz(null); }} maxWidth="md" fullWidth>
         <DialogTitle>Add Questions to &quot;{selectedQuiz?.title}&quot;</DialogTitle>
         <Formik
           initialValues={{
-            questions: [{ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', image_url: '' }]
+            topics: [
+              {
+                topic_name: '',
+                questions: [
+                  { question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', image_url: '' }
+                ]
+              }
+            ]
           }}
-          onSubmit={async (values, { setFieldError, setStatus }) => {
+          validate={(values) => {
+            const errors = {};
+            const topicsErrors = values.topics.map((topic, ti) => {
+              const topicErr = {};
+              if (!topic.topic_name?.trim()) topicErr.topic_name = 'Topic name is required';
+              const qErrors = topic.questions.map((q) => {
+                const qErr = {};
+                if (!q.question_text?.trim()) qErr.question_text = 'Question text is required';
+                if (!q.correct_option) qErr.correct_option = 'Select correct answer';
+                return qErr;
+              });
+              if (qErrors.some((e) => Object.keys(e).length > 0)) topicErr.questions = qErrors;
+              return topicErr;
+            });
+            if (topicsErrors.some((e) => Object.keys(e).length > 0)) errors.topics = topicsErrors;
+            return errors;
+          }}
+          onSubmit={async (values, { setStatus }) => {
             try {
               setStatus(null);
-              await addBatchQuizQuestions(selectedQuiz.id, values.questions);
+              // Flatten topics → questions array with topic name on each question
+              const allQuestions = values.topics.flatMap((topic) =>
+                topic.questions.map((q) => ({ ...q, topic: topic.topic_name.trim() }))
+              );
+              await addBatchQuizQuestions(selectedQuiz.id, allQuestions);
               setOpenQuestion(false);
               setSelectedQuiz(null);
               loadQuizzes();
             } catch (e) {
-              const msg = e.response?.data?.message || 'Failed to add questions. Please check your connection.';
-              setStatus(msg);
-              setFieldError('questions.0.question_text', msg);
+              setStatus(e.response?.data?.message || 'Failed to add questions. Please check your connection.');
             }
           }}
         >
-          {({ values, errors, touched, setFieldValue, status, setStatus }) => (
+          {({ values, errors, touched, setFieldValue, status }) => (
             <Form>
-              <DialogContent>
+              <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 {status && <Alert severity="error" sx={{ mb: 2 }}>{status}</Alert>}
-                <FieldArray name="questions">
-                  {({ push, remove }) => (
+                <FieldArray name="topics">
+                  {({ push: pushTopic, remove: removeTopic }) => (
                     <Box>
-                      {values.questions.map((_, index) => (
-                        <Paper key={index} variant="outlined" sx={{ p: 2, mb: 3 }}>
-                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                            <Typography variant="subtitle2" fontWeight="bold">Question #{index + 1}</Typography>
-                            {values.questions.length > 1 && (
-                              <IconButton size="small" color="error" onClick={() => remove(index)}><DeleteIcon fontSize="small" /></IconButton>
+                      {values.topics.map((topic, ti) => (
+                        <Paper
+                          key={ti}
+                          variant="outlined"
+                          sx={{ p: 2, mb: 3, borderColor: 'primary.main', borderWidth: 2 }}
+                        >
+                          {/* Topic header */}
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                              Topic {ti + 1}
+                            </Typography>
+                            {values.topics.length > 1 && (
+                              <IconButton size="small" color="error" onClick={() => removeTopic(ti)}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
                             )}
                           </Box>
+
+                          {/* Topic name field */}
                           <Field
                             as={TextField}
                             fullWidth
-                            multiline
-                            rows={2}
-                            name={`questions.${index}.question_text`}
-                            label="Question Text"
+                            name={`topics.${ti}.topic_name`}
+                            label="Topic Name (e.g. Arrays, OOP Basics)"
                             margin="dense"
                             required
-                            error={touched.questions?.[index]?.question_text && !!errors.questions?.[index]?.question_text}
-                            helperText={touched.questions?.[index]?.question_text && errors.questions?.[index]?.question_text}
+                            error={touched.topics?.[ti]?.topic_name && !!errors.topics?.[ti]?.topic_name}
+                            helperText={touched.topics?.[ti]?.topic_name && errors.topics?.[ti]?.topic_name}
+                            sx={{ mb: 2 }}
                           />
-                          <Box sx={{ mt: 1, mb: 1 }}>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              id={`upload-file-${index}`}
-                              onChange={async (e) => {
-                                const file = e.target.files[0];
-                                if (!file) return;
-                                try {
-                                  const res = await uploadFile(file);
-                                  setFieldValue(`questions.${index}.image_url`, res.data.data.url);
-                                } catch (err) {
-                                  console.error('Upload failed:', err);
-                                  alert('File upload failed');
-                                }
-                              }}
-                            />
-                            <label htmlFor={`upload-file-${index}`}>
-                              <Button variant="outlined" component="span" size="small" startIcon={<AddIcon />} type="button">
-                                {values.questions[index].image_url ? 'Change Image' : 'Upload Image'}
-                              </Button>
-                            </label>
-                            {values.questions[index].image_url && (
-                              <Box sx={{ mt: 1 }}>
-                                <img src={values.questions[index].image_url} alt="Preview" style={{ maxWidth: '100%', maxHeight: 100, borderRadius: 4 }} />
-                                <Button size="small" color="error" onClick={() => setFieldValue(`questions.${index}.image_url`, '')} sx={{ ml: 1 }} type="button">Remove</Button>
+
+                          {/* Questions under this topic */}
+                          <FieldArray name={`topics.${ti}.questions`}>
+                            {({ push: pushQ, remove: removeQ }) => (
+                              <Box>
+                                {topic.questions.map((_, qi) => (
+                                  <Paper
+                                    key={qi}
+                                    variant="outlined"
+                                    sx={{ p: 1.5, mb: 2, bgcolor: 'grey.50' }}
+                                  >
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                                      <Typography variant="caption" fontWeight="bold" color="text.secondary">
+                                        Question {qi + 1}
+                                      </Typography>
+                                      {topic.questions.length > 1 && (
+                                        <IconButton size="small" color="error" onClick={() => removeQ(qi)}>
+                                          <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                      )}
+                                    </Box>
+
+                                    <Field
+                                      as={TextField}
+                                      fullWidth
+                                      multiline
+                                      rows={2}
+                                      name={`topics.${ti}.questions.${qi}.question_text`}
+                                      label="Question Text"
+                                      margin="dense"
+                                      required
+                                      error={
+                                        touched.topics?.[ti]?.questions?.[qi]?.question_text &&
+                                        !!errors.topics?.[ti]?.questions?.[qi]?.question_text
+                                      }
+                                      helperText={
+                                        touched.topics?.[ti]?.questions?.[qi]?.question_text &&
+                                        errors.topics?.[ti]?.questions?.[qi]?.question_text
+                                      }
+                                    />
+
+                                    {/* Image upload */}
+                                    <Box sx={{ mt: 1, mb: 1 }}>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                        id={`upload-${ti}-${qi}`}
+                                        onChange={async (e) => {
+                                          const file = e.target.files[0];
+                                          if (!file) return;
+                                          try {
+                                            const res = await uploadFile(file);
+                                            setFieldValue(`topics.${ti}.questions.${qi}.image_url`, res.data.data.url);
+                                          } catch (err) {
+                                            alert('File upload failed');
+                                          }
+                                        }}
+                                      />
+                                      <label htmlFor={`upload-${ti}-${qi}`}>
+                                        <Button variant="outlined" component="span" size="small" startIcon={<AddIcon />} type="button">
+                                          {topic.questions[qi].image_url ? 'Change Image' : 'Upload Image'}
+                                        </Button>
+                                      </label>
+                                      {topic.questions[qi].image_url && (
+                                        <Box sx={{ mt: 1 }}>
+                                          <img src={topic.questions[qi].image_url} alt="Preview" style={{ maxWidth: '100%', maxHeight: 80, borderRadius: 4 }} />
+                                          <Button size="small" color="error" onClick={() => setFieldValue(`topics.${ti}.questions.${qi}.image_url`, '')} sx={{ ml: 1 }} type="button">Remove</Button>
+                                        </Box>
+                                      )}
+                                    </Box>
+
+                                    <Box display="flex" gap={1.5}>
+                                      <Field as={TextField} fullWidth name={`topics.${ti}.questions.${qi}.option_a`} label="Option A" margin="dense" size="small" />
+                                      <Field as={TextField} fullWidth name={`topics.${ti}.questions.${qi}.option_b`} label="Option B" margin="dense" size="small" />
+                                    </Box>
+                                    <Box display="flex" gap={1.5}>
+                                      <Field as={TextField} fullWidth name={`topics.${ti}.questions.${qi}.option_c`} label="Option C" margin="dense" size="small" />
+                                      <Field as={TextField} fullWidth name={`topics.${ti}.questions.${qi}.option_d`} label="Option D" margin="dense" size="small" />
+                                    </Box>
+                                    <Field
+                                      as={TextField}
+                                      select
+                                      fullWidth
+                                      name={`topics.${ti}.questions.${qi}.correct_option`}
+                                      label="Correct Answer"
+                                      margin="dense"
+                                      size="small"
+                                    >
+                                      <MenuItem value="a">A</MenuItem>
+                                      <MenuItem value="b">B</MenuItem>
+                                      <MenuItem value="c">C</MenuItem>
+                                      <MenuItem value="d">D</MenuItem>
+                                    </Field>
+                                  </Paper>
+                                ))}
+
+                                <Button
+                                  size="small"
+                                  startIcon={<AddIcon />}
+                                  onClick={() => pushQ({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', image_url: '' })}
+                                  variant="outlined"
+                                  sx={{ mt: 0.5 }}
+                                  type="button"
+                                >
+                                  Add Question to this Topic
+                                </Button>
                               </Box>
                             )}
-                          </Box>
-                          <Box display="flex" gap={2}>
-                            <Field as={TextField} fullWidth name={`questions.${index}.option_a`} label="Option A" margin="dense" size="small" />
-                            <Field as={TextField} fullWidth name={`questions.${index}.option_b`} label="Option B" margin="dense" size="small" />
-                          </Box>
-                          <Box display="flex" gap={2}>
-                            <Field as={TextField} fullWidth name={`questions.${index}.option_c`} label="Option C" margin="dense" size="small" />
-                            <Field as={TextField} fullWidth name={`questions.${index}.option_d`} label="Option D" margin="dense" size="small" />
-                          </Box>
-                          <Field as={TextField} select fullWidth name={`questions.${index}.correct_option`} label="Correct Answer" margin="dense" size="small">
-                            <MenuItem value="a">A</MenuItem>
-                            <MenuItem value="b">B</MenuItem>
-                            <MenuItem value="c">C</MenuItem>
-                            <MenuItem value="d">D</MenuItem>
-                          </Field>
+                          </FieldArray>
                         </Paper>
                       ))}
+
+                      {/* Add new topic */}
                       <Button
                         startIcon={<AddIcon />}
-                        onClick={() => push({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', image_url: '' })}
-                        variant="outlined"
+                        onClick={() =>
+                          pushTopic({
+                            topic_name: '',
+                            questions: [{ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', image_url: '' }]
+                          })
+                        }
+                        variant="contained"
+                        color="secondary"
                         sx={{ mt: 1 }}
                         type="button"
                       >
-                        Add Another Question
+                        Add Another Topic
                       </Button>
                     </Box>
                   )}
@@ -403,7 +514,7 @@ export default function CourseDetailInstructor() {
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => { setOpenQuestion(false); setSelectedQuiz(null); }} type="button">Cancel</Button>
-                <Button type="submit" variant="contained">Add Questions</Button>
+                <Button type="submit" variant="contained">Save All Questions</Button>
               </DialogActions>
             </Form>
           )}
@@ -552,53 +663,91 @@ export default function CourseDetailInstructor() {
       </Dialog>
       <Dialog open={openViewQuestions} onClose={() => { setOpenViewQuestions(false); setSelectedQuiz(null); }} maxWidth="md" fullWidth>
         <DialogTitle>Questions for &quot;{selectedQuiz?.title}&quot;</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           {viewLoading ? (
             <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>
           ) : quizQuestions.length === 0 ? (
             <Typography align="center" color="text.secondary" p={3}>No questions in this quiz yet.</Typography>
-          ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell width="40%">Question</TableCell>
-                    <TableCell>Options</TableCell>
-                    <TableCell>Correct</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {quizQuestions.map((q, idx) => (
-                    <TableRow key={q.id}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="bold">{idx + 1}. {q.question_text}</Typography>
-                        {q.image_url && (
-                          <Box mt={1}>
-                            <img src={q.image_url} alt="Question" style={{ maxWidth: 100, maxHeight: 60, borderRadius: 4 }} />
-                          </Box>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" display="block">A: {q.option_a}</Typography>
-                        <Typography variant="caption" display="block">B: {q.option_b}</Typography>
-                        <Typography variant="caption" display="block">C: {q.option_c}</Typography>
-                        <Typography variant="caption" display="block">D: {q.option_d}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="primary.main" fontWeight="bold">{q.correct_option?.toUpperCase()}</Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" color="error" onClick={() => handleDeleteQuestion(q.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+          ) : (() => {
+            // Group questions by topic
+            const grouped = {};
+            quizQuestions.forEach((q) => {
+              const key = q.topic?.trim() || 'General';
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(q);
+            });
+            let globalIdx = 0;
+            return Object.entries(grouped).map(([topicName, qs]) => (
+              <Box key={topicName} sx={{ mb: 3 }}>
+                {/* Topic heading */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mb: 1,
+                    px: 1,
+                    py: 0.5,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    📌 {topicName}
+                  </Typography>
+                  <Typography variant="caption" sx={{ ml: 'auto', opacity: 0.85 }}>
+                    {qs.length} question{qs.length !== 1 ? 's' : ''}
+                  </Typography>
+                </Box>
+
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell width="40%">Question</TableCell>
+                        <TableCell>Options</TableCell>
+                        <TableCell>Correct</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {qs.map((q) => {
+                        globalIdx++;
+                        const displayIdx = globalIdx;
+                        return (
+                          <TableRow key={q.id}>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="bold">{displayIdx}. {q.question_text}</Typography>
+                              {q.image_url && (
+                                <Box mt={1}>
+                                  <img src={q.image_url} alt="Question" style={{ maxWidth: 100, maxHeight: 60, borderRadius: 4 }} />
+                                </Box>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" display="block">A: {q.option_a}</Typography>
+                              <Typography variant="caption" display="block">B: {q.option_b}</Typography>
+                              <Typography variant="caption" display="block">C: {q.option_c}</Typography>
+                              <Typography variant="caption" display="block">D: {q.option_d}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="primary.main" fontWeight="bold">{q.correct_option?.toUpperCase()}</Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <IconButton size="small" color="error" onClick={() => handleDeleteQuestion(q.id)}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            ));
+          })()}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenViewQuestions(false)}>Close</Button>
